@@ -43,6 +43,28 @@
         padding: 8px 24px;
         cursor: pointer;
       }
+
+      .log-window {
+        margin-top: 16px;
+        height: 300px;
+        overflow-y: auto;
+        background: #111;
+        font-family: monospace;
+        font-size: 12px;
+        padding: 8px;
+        color: #ccc;
+      }
+
+      .log-entry {
+        white-space: pre-wrap;
+        word-break: break-all;
+        padding: 2px 0;
+      }
+
+      .log-entry.info { color: #88f; }
+      .log-entry.success { color: #4f4; }
+      .log-entry.warning { color: #fa0; }
+      .log-entry.error { color: #f44; }
     </style>
   </head>
   <body>
@@ -57,6 +79,7 @@
         />
         <button id="loadBtn" class="load-btn">Load</button>
       </div>
+      <div id="logWindow" class="log-window"></div>
     </div>
 
     <script>
@@ -74,6 +97,34 @@
       // ============================================================
       // LOGGING UTILITIES
       // ============================================================
+      const MAX_LOGS = 1000;
+      const logWindow = document.getElementById("logWindow");
+
+      function addToLogWindow(type, msg, data) {
+        // Check if user is near bottom before adding (within 50px)
+        const isNearBottom = logWindow.scrollHeight - logWindow.scrollTop - logWindow.clientHeight < 50;
+
+        const timestamp = new Date().toISOString();
+        const entry = document.createElement("div");
+        entry.className = `log-entry ${type}`;
+        let text = `[${timestamp}] ${type.toUpperCase()}: ${msg}`;
+        if (data !== undefined) {
+          text += " " + (typeof data === "object" ? JSON.stringify(data) : data);
+        }
+        entry.textContent = text;
+        logWindow.appendChild(entry);
+
+        // Keep only last MAX_LOGS entries
+        while (logWindow.children.length > MAX_LOGS) {
+          logWindow.removeChild(logWindow.firstChild);
+        }
+
+        // Auto-scroll only if user was near bottom
+        if (isNearBottom) {
+          logWindow.scrollTop = logWindow.scrollHeight;
+        }
+      }
+
       const log = {
         info: (msg, data) => {
           const timestamp = new Date().toISOString();
@@ -82,6 +133,7 @@
             "color: #8888ff",
             data !== undefined ? data : ""
           );
+          addToLogWindow("info", msg, data);
         },
         success: (msg, data) => {
           const timestamp = new Date().toISOString();
@@ -90,6 +142,7 @@
             "color: #44ff44; font-weight: bold",
             data !== undefined ? data : ""
           );
+          addToLogWindow("success", msg, data);
         },
         warning: (msg, data) => {
           const timestamp = new Date().toISOString();
@@ -98,6 +151,7 @@
             "color: #ffaa00; font-weight: bold",
             data !== undefined ? data : ""
           );
+          addToLogWindow("warning", msg, data);
         },
         error: (msg, data) => {
           const timestamp = new Date().toISOString();
@@ -106,18 +160,21 @@
             "color: #ff4444; font-weight: bold",
             data !== undefined ? data : ""
           );
+          addToLogWindow("error", msg, data);
         },
         group: (title) => {
           console.group(
             `%c${title}`,
             "color: #ff6b6b; font-size: 14px; font-weight: bold"
           );
+          addToLogWindow("warning", `=== ${title} ===`);
         },
         groupEnd: () => {
           console.groupEnd();
         },
         table: (data) => {
           console.table(data);
+          addToLogWindow("info", "Table data", data);
         },
         hex: (buffer, maxBytes = 32) => {
           const arr = new Uint8Array(buffer.slice(0, maxBytes));
