@@ -44,8 +44,22 @@
         cursor: pointer;
       }
 
-      .log-window {
+      .log-toggle {
         margin-top: 16px;
+        padding: 6px 12px;
+        cursor: pointer;
+        background: #333;
+        color: #ccc;
+        border: 1px solid #555;
+        font-size: 12px;
+      }
+
+      .log-toggle:hover {
+        background: #444;
+      }
+
+      .log-window {
+        margin-top: 8px;
         height: 300px;
         overflow-y: auto;
         background: #111;
@@ -53,6 +67,11 @@
         font-size: 12px;
         padding: 8px;
         color: #ccc;
+        display: none;
+      }
+
+      .log-window.visible {
+        display: block;
       }
 
       .log-entry {
@@ -61,10 +80,18 @@
         padding: 2px 0;
       }
 
-      .log-entry.info { color: #88f; }
-      .log-entry.success { color: #4f4; }
-      .log-entry.warning { color: #fa0; }
-      .log-entry.error { color: #f44; }
+      .log-entry.info {
+        color: #88f;
+      }
+      .log-entry.success {
+        color: #4f4;
+      }
+      .log-entry.warning {
+        color: #fa0;
+      }
+      .log-entry.error {
+        color: #f44;
+      }
     </style>
   </head>
   <body>
@@ -79,6 +106,7 @@
         />
         <button id="loadBtn" class="load-btn">Load</button>
       </div>
+      <button id="logToggle" class="log-toggle">Show Logs</button>
       <div id="logWindow" class="log-window"></div>
     </div>
 
@@ -102,14 +130,19 @@
 
       function addToLogWindow(type, msg, data) {
         // Check if user is near bottom before adding (within 50px)
-        const isNearBottom = logWindow.scrollHeight - logWindow.scrollTop - logWindow.clientHeight < 50;
+        const isNearBottom =
+          logWindow.scrollHeight -
+            logWindow.scrollTop -
+            logWindow.clientHeight <
+          50;
 
         const timestamp = new Date().toISOString();
         const entry = document.createElement("div");
         entry.className = `log-entry ${type}`;
         let text = `[${timestamp}] ${type.toUpperCase()}: ${msg}`;
         if (data !== undefined) {
-          text += " " + (typeof data === "object" ? JSON.stringify(data) : data);
+          text +=
+            " " + (typeof data === "object" ? JSON.stringify(data) : data);
         }
         entry.textContent = text;
         logWindow.appendChild(entry);
@@ -186,6 +219,7 @@
 
       let certificate = null;
       let currentContentId = null;
+      let encryptedEventCount = 0;
 
       const video = document.getElementById("video");
       const manifestUrlInput = document.getElementById("manifestUrl");
@@ -442,10 +476,8 @@
               buffered:
                 video.buffered?.length > 0
                   ? {
-                      start: video.buffered.start(0)?.toFixed(2),
-                      end: video.buffered
-                        .end(video.buffered.length - 1)
-                        ?.toFixed(2),
+                      start: video.buffered.start(0),
+                      end: video.buffered.end(video.buffered.length - 1),
                     }
                   : null,
             };
@@ -506,8 +538,17 @@
         log.success("FairPlay support detected");
 
         video.addEventListener("encrypted", async (event) => {
-          log.group("ENCRYPTED EVENT - DRM FLOW INITIATED");
+          encryptedEventCount++;
+          log.group(
+            `ENCRYPTED EVENT #${encryptedEventCount} - DRM FLOW INITIATED`
+          );
           log.warning("Encrypted content detected!");
+          log.info("Encrypted event count:", encryptedEventCount);
+          if (encryptedEventCount > 1) {
+            log.warning(
+              "Multiple encrypted events detected - content may have multiple keys"
+            );
+          }
 
           log.info("Event details", {
             initDataType: event.initDataType,
@@ -550,15 +591,61 @@
 
             log.info("Key system configuration", keySystemConfig);
 
-            const keySystemAccess = await navigator.requestMediaKeySystemAccess(
-              "com.apple.fps",
-              [keySystemConfig]
-            );
+            let keySystemAccess;
+            try {
+              keySystemAccess = await navigator.requestMediaKeySystemAccess(
+                "com.apple.fps",
+                [keySystemConfig]
+              );
 
-            log.success("MediaKeySystemAccess granted", {
-              keySystem: keySystemAccess.keySystem,
-              configuration: keySystemAccess.getConfiguration(),
-            });
+              log.success("MediaKeySystemAccess granted", {
+                keySystem: keySystemAccess.keySystem,
+                configuration: keySystemAccess.getConfiguration(),
+              });
+
+              // Log detailed granted configuration
+              const grantedConfig = keySystemAccess.getConfiguration();
+              log.info("Granted configuration details", {
+                initDataTypes: grantedConfig.initDataTypes,
+                videoCapabilities: grantedConfig.videoCapabilities,
+                audioCapabilities: grantedConfig.audioCapabilities,
+                distinctiveIdentifier: grantedConfig.distinctiveIdentifier,
+                persistentState: grantedConfig.persistentState,
+                sessionTypes: grantedConfig.sessionTypes,
+              });
+            } catch (keySystemError) {
+              log.error("MediaKeySystemAccess DENIED", {
+                name: keySystemError.name,
+                message: keySystemError.message,
+              });
+
+              // Provide specific guidance based on error
+              if (keySystemError.name === "NotSupportedError") {
+                log.error("Key system 'com.apple.fps' not supported");
+                log.info("Possible reasons:", {
+                  notSafari: "FairPlay only works in Safari browser",
+                  configRejected: "Requested configuration not supported",
+                  initDataType: "Init data type 'skd' may not be supported",
+                });
+
+                // Try to detect why it failed
+                if (
+                  !navigator.userAgent.includes("Safari") ||
+                  navigator.userAgent.includes("Chrome")
+                ) {
+                  log.error(
+                    "This browser is NOT Safari - FairPlay requires Safari"
+                  );
+                }
+              } else if (keySystemError.name === "TypeError") {
+                log.error("Invalid key system configuration provided");
+              } else if (keySystemError.name === "SecurityError") {
+                log.error("Security policy prevents EME usage");
+                log.info("Check if page is served over HTTPS");
+              }
+
+              throw keySystemError;
+            }
 
             // Create MediaKeys
             log.info("Creating MediaKeys object...");
@@ -567,10 +654,33 @@
 
             // Set server certificate
             log.info("Setting server certificate...");
-            const certResult = await mediaKeys.setServerCertificate(
-              certificate
-            );
-            log.success("Server certificate set", { result: certResult });
+            log.info("Certificate size:", certificate.byteLength);
+            try {
+              const certResult = await mediaKeys.setServerCertificate(
+                certificate
+              );
+              if (certResult === true) {
+                log.success("Server certificate set successfully");
+              } else if (certResult === false) {
+                log.warning("Server certificate was NOT set (returned false)");
+                log.warning(
+                  "CDM may not support server certificates or certificate was rejected"
+                );
+              } else {
+                log.info("Server certificate set", { result: certResult });
+              }
+            } catch (certError) {
+              log.error("setServerCertificate failed", {
+                name: certError.name,
+                message: certError.message,
+              });
+              if (certError.name === "InvalidStateError") {
+                log.error("MediaKeys not in valid state for certificate");
+              } else if (certError.name === "TypeError") {
+                log.error("Invalid certificate format");
+              }
+              throw certError;
+            }
 
             // Attach to video
             log.info("Attaching MediaKeys to video element...");
@@ -660,58 +770,180 @@
                   status: status,
                 });
 
-                if (status === "usable") {
-                  log.success(
-                    `Key ${keyIdHex.substring(
-                      0,
-                      16
-                    )}...: ${status.toUpperCase()}`
-                  );
-                } else if (
-                  status === "expired" ||
-                  status === "internal-error"
-                ) {
-                  log.error(
-                    `Key ${keyIdHex.substring(
-                      0,
-                      16
-                    )}...: ${status.toUpperCase()}`
-                  );
-                } else {
-                  log.warning(
-                    `Key ${keyIdHex.substring(
-                      0,
-                      16
-                    )}...: ${status.toUpperCase()}`
-                  );
+                const keyIdShort = keyIdHex.substring(0, 16) + "...";
+
+                // Log based on key status with explanations
+                switch (status) {
+                  case "usable":
+                    log.success(
+                      `Key ${keyIdShort}: USABLE - Key is available for decryption`
+                    );
+                    break;
+                  case "expired":
+                    log.error(
+                      `Key ${keyIdShort}: EXPIRED - Key has expired and is no longer valid`
+                    );
+                    break;
+                  case "released":
+                    log.warning(
+                      `Key ${keyIdShort}: RELEASED - Key has been released by the application`
+                    );
+                    break;
+                  case "output-restricted":
+                    log.error(
+                      `Key ${keyIdShort}: OUTPUT-RESTRICTED - Output restricted (HDCP or similar policy)`
+                    );
+                    break;
+                  case "output-downscaled":
+                    log.warning(
+                      `Key ${keyIdShort}: OUTPUT-DOWNSCALED - Resolution downscaled due to output policy`
+                    );
+                    break;
+                  case "status-pending":
+                    log.info(
+                      `Key ${keyIdShort}: STATUS-PENDING - Key status not yet determined`
+                    );
+                    break;
+                  case "internal-error":
+                    log.error(
+                      `Key ${keyIdShort}: INTERNAL-ERROR - CDM encountered an error`
+                    );
+                    break;
+                  default:
+                    log.warning(
+                      `Key ${keyIdShort}: ${status.toUpperCase()} - Unknown status`
+                    );
                 }
               });
 
               log.table(keyStatuses);
 
+              // Summary of key statuses
               const usableKeys = keyStatuses.filter(
                 (k) => k.status === "usable"
               ).length;
+              const expiredKeys = keyStatuses.filter(
+                (k) => k.status === "expired"
+              ).length;
+              const restrictedKeys = keyStatuses.filter(
+                (k) => k.status === "output-restricted"
+              ).length;
+              const pendingKeys = keyStatuses.filter(
+                (k) => k.status === "status-pending"
+              ).length;
+              const errorKeys = keyStatuses.filter(
+                (k) => k.status === "internal-error"
+              ).length;
+
+              log.info("Key status summary", {
+                total: keyStatuses.length,
+                usable: usableKeys,
+                expired: expiredKeys,
+                outputRestricted: restrictedKeys,
+                pending: pendingKeys,
+                errors: errorKeys,
+              });
+
               if (usableKeys > 0) {
                 log.success(
                   `${usableKeys} key(s) are USABLE - content can be decrypted`
                 );
+              } else if (pendingKeys > 0) {
+                log.info("Keys are pending - waiting for status update");
+              } else if (expiredKeys > 0) {
+                log.error("All keys have EXPIRED - license renewal required");
+              } else if (restrictedKeys > 0) {
+                log.error(
+                  "Keys are OUTPUT-RESTRICTED - check HDCP/display security"
+                );
+              } else if (errorKeys > 0) {
+                log.error("Keys have INTERNAL-ERROR - CDM failure");
               } else {
                 log.warning("No usable keys - content cannot be decrypted yet");
               }
 
+              // Log session expiration time
+              if (session.expiration !== undefined) {
+                if (session.expiration === Infinity) {
+                  log.info("Session expiration: Never (no expiration set)");
+                } else if (session.expiration > 0) {
+                  const expirationDate = new Date(session.expiration);
+                  const timeUntilExpiry = session.expiration - Date.now();
+                  log.info("Session expiration", {
+                    expiresAt: expirationDate.toISOString(),
+                    timeUntilExpiryMs: timeUntilExpiry,
+                    timeUntilExpiryMinutes: (timeUntilExpiry / 60000).toFixed(
+                      2
+                    ),
+                  });
+                  if (timeUntilExpiry < 300000) {
+                    // Less than 5 minutes
+                    log.warning("Session expires in less than 5 minutes!");
+                  }
+                }
+              }
+
               log.groupEnd(); // KEY STATUS CHANGE
             });
+
+            // SESSION CLOSE event handler (for when session is closed)
+            session.closed
+              .then(() => {
+                log.group("SESSION CLOSED");
+                log.warning("MediaKeySession has been closed");
+                log.info("Session ID:", session.sessionId || "unknown");
+                log.info("This session can no longer be used for decryption");
+                log.groupEnd();
+              })
+              .catch((closeError) => {
+                log.group("SESSION CLOSE ERROR");
+                log.error("Session closed with error", {
+                  name: closeError.name,
+                  message: closeError.message,
+                });
+                log.groupEnd();
+              });
 
             // Generate license request
             log.info("Generating license request...");
             log.info("Init data type:", event.initDataType);
             log.info("Init data size:", event.initData.byteLength);
 
-            await session.generateRequest(event.initDataType, event.initData);
-            log.success(
-              "License request generated - waiting for MESSAGE event..."
-            );
+            try {
+              await session.generateRequest(event.initDataType, event.initData);
+              log.success(
+                "License request generated - waiting for MESSAGE event..."
+              );
+
+              // Log session ID after generateRequest (it's often assigned here)
+              if (session.sessionId) {
+                log.info("Session ID assigned:", session.sessionId);
+              } else {
+                log.warning(
+                  "Session ID still not assigned after generateRequest"
+                );
+              }
+            } catch (genError) {
+              log.error("generateRequest failed", {
+                name: genError.name,
+                message: genError.message,
+                code: genError.code,
+              });
+
+              // Provide specific guidance based on error
+              if (genError.name === "NotSupportedError") {
+                log.error("Init data type or format not supported by this CDM");
+              } else if (genError.name === "InvalidStateError") {
+                log.error("Session is already initialized or closed");
+              } else if (genError.name === "QuotaExceededError") {
+                log.error(
+                  "Too many active sessions - close existing sessions first"
+                );
+              } else if (genError.name === "TypeError") {
+                log.error("Invalid init data provided");
+              }
+              throw genError;
+            }
 
             log.groupEnd(); // MEDIA KEY SESSION
           } catch (error) {
@@ -764,7 +996,10 @@
           // Reset certificate cache to ensure fresh DRM flow
           certificate = null;
           currentContentId = null;
-          log.info("DRM state reset");
+          encryptedEventCount = 0;
+          log.info(
+            "DRM state reset (certificate, contentId, encrypted event counter)"
+          );
 
           // Pre-fetch certificate
           log.info("Pre-fetching certificate...");
@@ -821,6 +1056,17 @@
         // Attach load button handler
         loadBtn.addEventListener("click", loadVideo);
         log.info("Load button handler attached");
+
+        // Attach log toggle button handler
+        const logToggle = document.getElementById("logToggle");
+        logToggle.addEventListener("click", () => {
+          const isVisible = logWindow.classList.toggle("visible");
+          logToggle.textContent = isVisible ? "Hide Logs" : "Show Logs";
+          if (isVisible) {
+            logWindow.scrollTop = logWindow.scrollHeight;
+          }
+        });
+        log.info("Log toggle handler attached");
 
         // Allow Enter key in input to trigger load
         manifestUrlInput.addEventListener("keypress", (e) => {
