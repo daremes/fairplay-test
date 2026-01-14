@@ -376,7 +376,7 @@
           video.addEventListener(eventName, (e) => {
             const eventData = {
               type: eventName,
-              currentTime: video.currentTime?.toFixed(2),
+              currentTime: video.currentTime,
               duration: video.duration?.toFixed(2),
               readyState: video.readyState,
               networkState: video.networkState,
