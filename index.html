@@ -1,776 +1,784 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FairPlay HLS Test</title>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-      background: #1a1a2e;
-      color: #eee;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
-    }
+      body {
+        font-family: system-ui, sans-serif;
+        background: #222;
+        padding: 20px;
+      }
 
-    .container {
-      width: 100%;
-      max-width: 900px;
-    }
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
 
-    h1 {
-      font-size: 1.5rem;
-      margin-bottom: 8px;
-      color: #fff;
-    }
+      video {
+        width: 100%;
+        background: #000;
+        margin-bottom: 12px;
+      }
 
-    .subtitle {
-      color: #888;
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-    }
-
-    .player-section {
-      background: #16213e;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-
-    video {
-      width: 100%;
-      max-height: 500px;
-      background: #000;
-      border-radius: 8px;
-      margin-bottom: 16px;
-    }
-
-    .controls {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    .url-input {
-      flex: 1;
-      min-width: 200px;
-      padding: 12px 16px;
-      border: 2px solid #0f3460;
-      border-radius: 8px;
-      background: #1a1a2e;
-      color: #fff;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .url-input:focus {
-      border-color: #e94560;
-    }
-
-    .url-input::placeholder {
-      color: #666;
-    }
-
-    .load-btn {
-      padding: 12px 32px;
-      background: #e94560;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-    }
-
-    .load-btn:hover {
-      background: #ff6b6b;
-    }
-
-    .load-btn:active {
-      transform: scale(0.98);
-    }
-
-    .info {
-      margin-top: 16px;
-      padding: 12px;
-      background: #1a1a2e;
-      border-radius: 8px;
-      font-size: 13px;
-      color: #888;
-    }
-
-    .info p {
-      margin: 4px 0;
-    }
-
-    .info strong {
-      color: #e94560;
-    }
-
-    @media (max-width: 600px) {
       .controls {
-        flex-direction: column;
+        display: flex;
+        gap: 8px;
       }
 
       .url-input {
-        width: 100%;
+        flex: 1;
+        padding: 8px;
+        font-size: 14px;
       }
 
       .load-btn {
-        width: 100%;
+        padding: 8px 24px;
+        cursor: pointer;
       }
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>FairPlay HLS Test</h1>
-    <p class="subtitle">Safari-only FairPlay DRM test with detailed console logging</p>
-
-    <div class="player-section">
+    </style>
+  </head>
+  <body>
+    <div class="container">
       <video id="video" controls autoplay playsinline></video>
-
       <div class="controls">
         <input
           type="text"
           id="manifestUrl"
           class="url-input"
           placeholder="Enter HLS manifest URL..."
-        >
+        />
         <button id="loadBtn" class="load-btn">Load</button>
       </div>
-
-      <div class="info">
-        <p><strong>Instructions:</strong> Open browser console (F12 or Cmd+Option+J) to see detailed logs</p>
-        <p>This page requires Safari browser for FairPlay DRM support</p>
-      </div>
     </div>
-  </div>
 
-  <script>
-    // ============================================================
-    // CONFIGURATION
-    // ============================================================
-    const CONFIG = {
-      defaultHlsUrl: 'https://ivys-nw-cdn.o2tv.cz/cdn/uri/get/?token=cba0901fa6e069e89bf4ac0397d5d62dca2a1178&userId=cdn-test-user-id&contentId=522&streamType=hls&quality=1080p&contentType=live&region=1&expiry=1796901846&drmOnly=true&skipIpAddressCheck=true&qualityCount=5&encryption=fp',
-      licenseUrl: 'https://ivys-fpproxy.o2tv.cz/license?access_token=public',
-      certificateUrl: 'https://fs.ceskatelevize.cz/cache/file/mobile/drm/cert/fairplay.cer',
-    };
+    <script>
+      // ============================================================
+      // CONFIGURATION
+      // ============================================================
+      const CONFIG = {
+        defaultHlsUrl:
+          "https://ivys-nw-cdn.o2tv.cz/cdn/uri/get/?token=c6ef0082fcc44f04cca17a7f4f7ae62fb0d6a77d&userId=temp-fp-test&contentId=122&streamType=hls&quality=1080p&contentType=live&region=1&expiry=1797434062&drmOnly=true&skipIpAddressCheck=true&qualityCount=5&encryption=fp",
+        licenseUrl: "https://ivys-fpproxy.o2tv.cz/license?access_token=public",
+        certificateUrl:
+          "https://fs.ceskatelevize.cz/cache/file/mobile/drm/cert/fairplay.cer",
+      };
 
-    // ============================================================
-    // LOGGING UTILITIES
-    // ============================================================
-    const log = {
-      info: (msg, data) => {
-        const timestamp = new Date().toISOString();
-        console.log(`%c[${timestamp}] INFO: ${msg}`, 'color: #8888ff', data !== undefined ? data : '');
-      },
-      success: (msg, data) => {
-        const timestamp = new Date().toISOString();
-        console.log(`%c[${timestamp}] SUCCESS: ${msg}`, 'color: #44ff44; font-weight: bold', data !== undefined ? data : '');
-      },
-      warning: (msg, data) => {
-        const timestamp = new Date().toISOString();
-        console.warn(`%c[${timestamp}] WARNING: ${msg}`, 'color: #ffaa00; font-weight: bold', data !== undefined ? data : '');
-      },
-      error: (msg, data) => {
-        const timestamp = new Date().toISOString();
-        console.error(`%c[${timestamp}] ERROR: ${msg}`, 'color: #ff4444; font-weight: bold', data !== undefined ? data : '');
-      },
-      group: (title) => {
-        console.group(`%c${title}`, 'color: #ff6b6b; font-size: 14px; font-weight: bold');
-      },
-      groupEnd: () => {
-        console.groupEnd();
-      },
-      table: (data) => {
-        console.table(data);
-      },
-      hex: (buffer, maxBytes = 32) => {
-        const arr = new Uint8Array(buffer.slice(0, maxBytes));
-        return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join(' ');
-      }
-    };
+      // ============================================================
+      // LOGGING UTILITIES
+      // ============================================================
+      const log = {
+        info: (msg, data) => {
+          const timestamp = new Date().toISOString();
+          console.log(
+            `%c[${timestamp}] INFO: ${msg}`,
+            "color: #8888ff",
+            data !== undefined ? data : ""
+          );
+        },
+        success: (msg, data) => {
+          const timestamp = new Date().toISOString();
+          console.log(
+            `%c[${timestamp}] SUCCESS: ${msg}`,
+            "color: #44ff44; font-weight: bold",
+            data !== undefined ? data : ""
+          );
+        },
+        warning: (msg, data) => {
+          const timestamp = new Date().toISOString();
+          console.warn(
+            `%c[${timestamp}] WARNING: ${msg}`,
+            "color: #ffaa00; font-weight: bold",
+            data !== undefined ? data : ""
+          );
+        },
+        error: (msg, data) => {
+          const timestamp = new Date().toISOString();
+          console.error(
+            `%c[${timestamp}] ERROR: ${msg}`,
+            "color: #ff4444; font-weight: bold",
+            data !== undefined ? data : ""
+          );
+        },
+        group: (title) => {
+          console.group(
+            `%c${title}`,
+            "color: #ff6b6b; font-size: 14px; font-weight: bold"
+          );
+        },
+        groupEnd: () => {
+          console.groupEnd();
+        },
+        table: (data) => {
+          console.table(data);
+        },
+        hex: (buffer, maxBytes = 32) => {
+          const arr = new Uint8Array(buffer.slice(0, maxBytes));
+          return Array.from(arr)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join(" ");
+        },
+      };
 
-    // ============================================================
-    // STATE
-    // ============================================================
-    let certificate = null;
-    let currentContentId = null;
+      let certificate = null;
+      let currentContentId = null;
 
-    // ============================================================
-    // DOM ELEMENTS
-    // ============================================================
-    const video = document.getElementById('video');
-    const manifestUrlInput = document.getElementById('manifestUrl');
-    const loadBtn = document.getElementById('loadBtn');
+      const video = document.getElementById("video");
+      const manifestUrlInput = document.getElementById("manifestUrl");
+      const loadBtn = document.getElementById("loadBtn");
 
-    // Set default URL
-    manifestUrlInput.value = CONFIG.defaultHlsUrl;
+      manifestUrlInput.value = CONFIG.defaultHlsUrl;
 
-    // ============================================================
-    // FAIRPLAY CERTIFICATE FETCHING
-    // ============================================================
-    async function fetchCertificate() {
-      log.group('CERTIFICATE FETCH');
-      log.info('Fetching FairPlay certificate...');
-      log.info('URL:', CONFIG.certificateUrl);
+      // ============================================================
+      // FAIRPLAY CERTIFICATE FETCHING
+      // ============================================================
+      async function fetchCertificate() {
+        log.group("CERTIFICATE FETCH");
+        log.info("Fetching FairPlay certificate...");
+        log.info("URL:", CONFIG.certificateUrl);
 
-      const startTime = performance.now();
-
-      try {
-        const response = await fetch(CONFIG.certificateUrl);
-        const fetchTime = (performance.now() - startTime).toFixed(2);
-
-        log.info('Response received', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
-          fetchTimeMs: fetchTime
-        });
-
-        if (!response.ok) {
-          throw new Error(`Certificate fetch failed: ${response.status} ${response.statusText}`);
-        }
-
-        const certBuffer = await response.arrayBuffer();
-
-        log.success('Certificate loaded successfully');
-        log.info('Certificate details', {
-          sizeBytes: certBuffer.byteLength,
-          firstBytes: log.hex(certBuffer, 16),
-          lastBytes: log.hex(certBuffer.slice(-16), 16)
-        });
-
-        log.groupEnd();
-        return certBuffer;
-
-      } catch (error) {
-        log.error('Certificate fetch failed', {
-          message: error.message,
-          stack: error.stack
-        });
-        log.groupEnd();
-        throw error;
-      }
-    }
-
-    // ============================================================
-    // CONTENT ID EXTRACTION
-    // ============================================================
-    function extractContentId(initData) {
-      log.group('CONTENT ID EXTRACTION');
-      log.info('Init data size:', initData.byteLength);
-      log.info('Init data (hex):', log.hex(initData, 64));
-
-      try {
-        const decoder = new TextDecoder('utf-8');
-        const initDataString = decoder.decode(initData);
-
-        log.info('Init data as string:', initDataString);
-
-        // Look for SKD URI pattern
-        const skdMatch = initDataString.match(/skd:\/\/([^"'\s]+)/);
-
-        if (skdMatch) {
-          const contentId = skdMatch[1];
-          log.success('Content ID extracted', {
-            fullSkdUri: `skd://${contentId}`,
-            contentId: contentId,
-            contentIdLength: contentId.length
-          });
-          log.groupEnd();
-          return contentId;
-        }
-
-        log.warning('No SKD URI found in init data, using fallback');
-        log.groupEnd();
-        return 'default-content-id';
-
-      } catch (error) {
-        log.error('Content ID extraction failed', error);
-        log.groupEnd();
-        return 'default-content-id';
-      }
-    }
-
-    // ============================================================
-    // LICENSE REQUEST FORMATTING
-    // ============================================================
-    function formatLicenseRequest(spc, contentId, cert) {
-      log.group('LICENSE REQUEST FORMATTING');
-
-      const encoder = new TextEncoder();
-      const idArray = encoder.encode(contentId);
-      const contentIdLength = new Uint8Array([0, 0, 0, 0, idArray.length]);
-
-      const totalSize = spc.byteLength + contentIdLength.length + idArray.length + cert.byteLength;
-      const combinedArray = new Uint8Array(totalSize);
-
-      let offset = 0;
-
-      // 1. SPC (Server Playback Context)
-      combinedArray.set(new Uint8Array(spc), offset);
-      log.info('Added SPC', { offset, size: spc.byteLength });
-      offset += spc.byteLength;
-
-      // 2. Content ID length (5 bytes)
-      combinedArray.set(contentIdLength, offset);
-      log.info('Added content ID length field', { offset, size: contentIdLength.length, value: idArray.length });
-      offset += contentIdLength.length;
-
-      // 3. Content ID (UTF-8 string)
-      combinedArray.set(idArray, offset);
-      log.info('Added content ID', { offset, size: idArray.length, value: contentId });
-      offset += idArray.length;
-
-      // 4. Certificate
-      combinedArray.set(new Uint8Array(cert), offset);
-      log.info('Added certificate', { offset, size: cert.byteLength });
-
-      log.success('License request payload created', {
-        totalSize: combinedArray.byteLength,
-        structure: {
-          spc: spc.byteLength,
-          contentIdLengthField: contentIdLength.length,
-          contentId: idArray.length,
-          certificate: cert.byteLength
-        }
-      });
-
-      log.groupEnd();
-      return combinedArray;
-    }
-
-    // ============================================================
-    // LICENSE FETCHING
-    // ============================================================
-    async function getLicense(licenseRequest, contentId) {
-      log.group('LICENSE REQUEST');
-      log.info('Requesting license from server...');
-      log.info('License URL:', CONFIG.licenseUrl);
-      log.info('Content ID:', contentId);
-      log.info('Payload size:', licenseRequest.byteLength);
-      log.info('Payload (first 32 bytes):', log.hex(licenseRequest, 32));
-
-      const startTime = performance.now();
-
-      try {
-        const response = await fetch(CONFIG.licenseUrl, {
-          method: 'POST',
-          body: licenseRequest
-        });
-
-        const fetchTime = (performance.now() - startTime).toFixed(2);
-
-        log.info('Response received', {
-          status: response.status,
-          statusText: response.statusText,
-          headers: Object.fromEntries(response.headers.entries()),
-          fetchTimeMs: fetchTime
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          log.error('License server error response', {
-            status: response.status,
-            body: errorText.substring(0, 500)
-          });
-          throw new Error(`License request failed: ${response.status}`);
-        }
-
-        const license = await response.arrayBuffer();
-
-        log.success('License (CKC) received', {
-          sizeBytes: license.byteLength,
-          firstBytes: log.hex(license, 16),
-          lastBytes: log.hex(license.slice(-16), 16)
-        });
-
-        log.groupEnd();
-        return license;
-
-      } catch (error) {
-        log.error('License request failed', {
-          message: error.message,
-          stack: error.stack
-        });
-        log.groupEnd();
-        throw error;
-      }
-    }
-
-    // ============================================================
-    // VIDEO EVENTS SETUP
-    // ============================================================
-    function setupVideoEvents() {
-      log.group('VIDEO EVENTS SETUP');
-
-      const events = [
-        'loadstart', 'suspend', 'abort', 'error', 'emptied', 'stalled',
-        'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough',
-        'playing', 'waiting', 'seeking', 'seeked', 'ended',
-        'durationchange', 'play', 'pause', 'ratechange', 'resize',
-        'volumechange', 'progress', 'timeupdate'
-      ];
-
-      events.forEach(eventName => {
-        video.addEventListener(eventName, (e) => {
-          // Skip frequent events in detailed logging
-          if (eventName === 'timeupdate' || eventName === 'progress') {
-            return; // These are too frequent, skip logging
-          }
-
-          const eventData = {
-            type: eventName,
-            currentTime: video.currentTime?.toFixed(2),
-            duration: video.duration?.toFixed(2),
-            readyState: video.readyState,
-            networkState: video.networkState,
-            paused: video.paused,
-            ended: video.ended,
-            buffered: video.buffered?.length > 0 ? {
-              start: video.buffered.start(0)?.toFixed(2),
-              end: video.buffered.end(video.buffered.length - 1)?.toFixed(2)
-            } : null
-          };
-
-          if (eventName === 'error') {
-            log.error(`Video event: ${eventName}`, {
-              ...eventData,
-              errorCode: video.error?.code,
-              errorMessage: video.error?.message
-            });
-          } else if (['canplay', 'playing', 'loadeddata', 'canplaythrough'].includes(eventName)) {
-            log.success(`Video event: ${eventName}`, eventData);
-          } else if (['waiting', 'stalled', 'suspend'].includes(eventName)) {
-            log.warning(`Video event: ${eventName}`, eventData);
-          } else {
-            log.info(`Video event: ${eventName}`, eventData);
-          }
-
-          if (eventName === 'loadedmetadata') {
-            log.info('Video metadata', {
-              videoWidth: video.videoWidth,
-              videoHeight: video.videoHeight,
-              duration: video.duration,
-              currentSrc: video.currentSrc
-            });
-          }
-        });
-      });
-
-      log.success('Video event listeners attached', { eventCount: events.length });
-      log.groupEnd();
-    }
-
-    // ============================================================
-    // FAIRPLAY DRM SETUP
-    // ============================================================
-    function setupFairPlayDRM() {
-      log.group('FAIRPLAY DRM SETUP');
-
-      // Check for FairPlay support
-      if (!window.WebKitMediaKeys && !navigator.requestMediaKeySystemAccess) {
-        log.error('FairPlay not supported in this browser');
-        log.info('FairPlay requires Safari browser');
-        log.groupEnd();
-        return;
-      }
-
-      log.success('FairPlay support detected');
-
-      video.addEventListener('encrypted', async (event) => {
-        log.group('ENCRYPTED EVENT - DRM FLOW INITIATED');
-        log.warning('Encrypted content detected!');
-
-        log.info('Event details', {
-          initDataType: event.initDataType,
-          initDataSize: event.initData?.byteLength
-        });
-
-        if (event.initData) {
-          log.info('Init data (first 64 bytes):', log.hex(event.initData, 64));
-        }
+        const startTime = performance.now();
 
         try {
-          // Ensure certificate is loaded
-          if (!certificate) {
-            log.info('Certificate not cached, fetching...');
-            certificate = await fetchCertificate();
-          } else {
-            log.success('Using cached certificate', { sizeBytes: certificate.byteLength });
+          const response = await fetch(CONFIG.certificateUrl);
+          const fetchTime = (performance.now() - startTime).toFixed(2);
+
+          log.info("Response received", {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            fetchTimeMs: fetchTime,
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `Certificate fetch failed: ${response.status} ${response.statusText}`
+            );
           }
 
-          // Extract content ID
-          currentContentId = extractContentId(event.initData);
+          const certBuffer = await response.arrayBuffer();
 
-          // Request MediaKeySystemAccess
-          log.group('MEDIA KEY SYSTEM ACCESS');
-          log.info('Requesting access to "com.apple.fps"...');
-
-          const keySystemConfig = {
-            initDataTypes: ['skd'],
-            videoCapabilities: [{
-              contentType: 'application/vnd.apple.mpegurl'
-            }]
-          };
-
-          log.info('Key system configuration', keySystemConfig);
-
-          const keySystemAccess = await navigator.requestMediaKeySystemAccess('com.apple.fps', [keySystemConfig]);
-
-          log.success('MediaKeySystemAccess granted', {
-            keySystem: keySystemAccess.keySystem,
-            configuration: keySystemAccess.getConfiguration()
+          log.success("Certificate loaded successfully");
+          log.info("Certificate details", {
+            sizeBytes: certBuffer.byteLength,
+            firstBytes: log.hex(certBuffer, 16),
+            lastBytes: log.hex(certBuffer.slice(-16), 16),
           });
 
-          // Create MediaKeys
-          log.info('Creating MediaKeys object...');
-          const mediaKeys = await keySystemAccess.createMediaKeys();
-          log.success('MediaKeys created');
+          log.groupEnd();
+          return certBuffer;
+        } catch (error) {
+          log.error("Certificate fetch failed", {
+            message: error.message,
+            stack: error.stack,
+          });
+          log.groupEnd();
+          throw error;
+        }
+      }
 
-          // Set server certificate
-          log.info('Setting server certificate...');
-          const certResult = await mediaKeys.setServerCertificate(certificate);
-          log.success('Server certificate set', { result: certResult });
+      // ============================================================
+      // CONTENT ID EXTRACTION
+      // ============================================================
+      function extractContentId(initData) {
+        log.group("CONTENT ID EXTRACTION");
+        log.info("Init data size:", initData.byteLength);
+        log.info("Init data (hex):", log.hex(initData, 64));
 
-          // Attach to video
-          log.info('Attaching MediaKeys to video element...');
-          await video.setMediaKeys(mediaKeys);
-          log.success('MediaKeys attached to video');
+        try {
+          const decoder = new TextDecoder("utf-8");
+          const initDataString = decoder.decode(initData);
 
-          log.groupEnd(); // MEDIA KEY SYSTEM ACCESS
+          log.info("Init data as string:", initDataString);
 
-          // Create session
-          log.group('MEDIA KEY SESSION');
-          log.info('Creating MediaKeySession...');
-          const session = mediaKeys.createSession();
-          log.success('Session created', { sessionId: session.sessionId || 'not assigned yet' });
+          // Look for SKD URI pattern
+          const skdMatch = initDataString.match(/skd:\/\/([^"'\s]+)/);
 
-          // MESSAGE event handler
-          session.addEventListener('message', async (messageEvent) => {
-            log.group('MESSAGE EVENT - LICENSE REQUEST');
-            log.warning('SPC generated, need to request license');
-
-            log.info('Message details', {
-              messageType: messageEvent.messageType,
-              messageSizeBytes: messageEvent.message.byteLength
+          if (skdMatch) {
+            const contentId = skdMatch[1];
+            log.success("Content ID extracted", {
+              fullSkdUri: `skd://${contentId}`,
+              contentId: contentId,
+              contentIdLength: contentId.length,
             });
-            log.info('SPC (first 32 bytes):', log.hex(messageEvent.message, 32));
+            log.groupEnd();
+            return contentId;
+          }
 
-            try {
-              // Format license request
-              const licenseRequest = formatLicenseRequest(
-                messageEvent.message,
-                currentContentId,
-                certificate
+          log.warning("No SKD URI found in init data, using fallback");
+          log.groupEnd();
+          return "default-content-id";
+        } catch (error) {
+          log.error("Content ID extraction failed", error);
+          log.groupEnd();
+          return "default-content-id";
+        }
+      }
+
+      // ============================================================
+      // LICENSE REQUEST FORMATTING
+      // ============================================================
+      function formatLicenseRequest(spc, contentId, cert) {
+        log.group("LICENSE REQUEST FORMATTING");
+
+        const encoder = new TextEncoder();
+        const idArray = encoder.encode(contentId);
+        const contentIdLength = new Uint8Array([0, 0, 0, 0, idArray.length]);
+
+        const totalSize =
+          spc.byteLength +
+          contentIdLength.length +
+          idArray.length +
+          cert.byteLength;
+        const combinedArray = new Uint8Array(totalSize);
+
+        let offset = 0;
+
+        // 1. SPC (Server Playback Context)
+        combinedArray.set(new Uint8Array(spc), offset);
+        log.info("Added SPC", { offset, size: spc.byteLength });
+        offset += spc.byteLength;
+
+        // 2. Content ID length (5 bytes)
+        combinedArray.set(contentIdLength, offset);
+        log.info("Added content ID length field", {
+          offset,
+          size: contentIdLength.length,
+          value: idArray.length,
+        });
+        offset += contentIdLength.length;
+
+        // 3. Content id (UTF-8 string)
+        combinedArray.set(idArray, offset);
+        log.info("Added content ID", {
+          offset,
+          size: idArray.length,
+          value: contentId,
+        });
+        offset += idArray.length;
+
+        // 4. Certificte
+        combinedArray.set(new Uint8Array(cert), offset);
+        log.info("Added certificate", { offset, size: cert.byteLength });
+
+        log.success("License request payload created", {
+          totalSize: combinedArray.byteLength,
+          structure: {
+            spc: spc.byteLength,
+            contentIdLengthField: contentIdLength.length,
+            contentId: idArray.length,
+            certificate: cert.byteLength,
+          },
+        });
+
+        log.groupEnd();
+        return combinedArray;
+      }
+
+      // ===========================================================
+      // LICENSE FETCHING
+      // ============================================================
+      async function getLicense(licenseRequest, contentId) {
+        log.group("LICENSE REQUEST");
+        log.info("Requesting license from server...");
+        log.info("License URL:", CONFIG.licenseUrl);
+        log.info("Content ID:", contentId);
+        log.info("Payload size:", licenseRequest.byteLength);
+        log.info("Payload (first 32 bytes):", log.hex(licenseRequest, 32));
+
+        const startTime = performance.now();
+
+        try {
+          const response = await fetch(CONFIG.licenseUrl, {
+            method: "POST",
+            body: licenseRequest,
+          });
+
+          const fetchTime = (performance.now() - startTime).toFixed(2);
+
+          log.info("Response received", {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            fetchTimeMs: fetchTime,
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            log.error("License server error response", {
+              status: response.status,
+              body: errorText.substring(0, 500),
+            });
+            throw new Error(`License request failed: ${response.status}`);
+          }
+
+          const license = await response.arrayBuffer();
+
+          log.success("License (CKC) received", {
+            sizeBytes: license.byteLength,
+            firstBytes: log.hex(license, 16),
+            lastBytes: log.hex(license.slice(-16), 16),
+          });
+
+          log.groupEnd();
+          return license;
+        } catch (error) {
+          log.error("License request failed", {
+            message: error.message,
+            stack: error.stack,
+          });
+          log.groupEnd();
+          throw error;
+        }
+      }
+
+      // ============================================================
+      // VIDEO EVENTS SETUP
+      // ============================================================
+      function setupVideoEvents() {
+        log.group("VIDEO EVENTS SETUP");
+
+        const events = [
+          "loadstart",
+          "suspend",
+          "abort",
+          "error",
+          "emptied",
+          "stalled",
+          "loadedmetadata",
+          "loadeddata",
+          "canplay",
+          "canplaythrough",
+          "playing",
+          "waiting",
+          "waitingforkey",
+          "seeking",
+          "seeked",
+          "ended",
+          "durationchange",
+          "play",
+          "pause",
+          "ratechange",
+          "resize",
+          "volumechange",
+          "progress",
+          "timeupdate",
+        ];
+
+        events.forEach((eventName) => {
+          video.addEventListener(eventName, (e) => {
+            const eventData = {
+              type: eventName,
+              currentTime: video.currentTime?.toFixed(2),
+              duration: video.duration?.toFixed(2),
+              readyState: video.readyState,
+              networkState: video.networkState,
+              paused: video.paused,
+              ended: video.ended,
+              buffered:
+                video.buffered?.length > 0
+                  ? {
+                      start: video.buffered.start(0)?.toFixed(2),
+                      end: video.buffered
+                        .end(video.buffered.length - 1)
+                        ?.toFixed(2),
+                    }
+                  : null,
+            };
+
+            if (eventName === "error") {
+              log.error(`Video event: ${eventName}`, {
+                ...eventData,
+                errorCode: video.error?.code,
+                errorMessage: video.error?.message,
+              });
+            } else if (
+              ["canplay", "playing", "loadeddata", "canplaythrough"].includes(
+                eventName
+              )
+            ) {
+              log.success(`Video event: ${eventName}`, eventData);
+            } else if (
+              ["waiting", "waitingforkey", "stalled", "suspend"].includes(
+                eventName
+              )
+            ) {
+              log.warning(`Video event: ${eventName}`, eventData);
+            } else {
+              log.info(`Video event: ${eventName}`, eventData);
+            }
+
+            if (eventName === "loadedmetadata") {
+              log.info("Video metadata", {
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                duration: video.duration,
+                currentSrc: video.currentSrc,
+              });
+            }
+          });
+        });
+
+        log.success("Video event listeners attached", {
+          eventCount: events.length,
+        });
+        log.groupEnd();
+      }
+
+      // ============================================================
+      // FAIRPLAY DRM SETUP
+      // ============================================================
+      function setupFairPlayDRM() {
+        log.group("FAIRPLAY DRM SETUP");
+
+        // Check for FairPlay support
+        if (!window.WebKitMediaKeys && !navigator.requestMediaKeySystemAccess) {
+          log.error("FairPlay not supported in this browser");
+          log.info("FairPlay requires Safari browser");
+          log.groupEnd();
+          return;
+        }
+
+        log.success("FairPlay support detected");
+
+        video.addEventListener("encrypted", async (event) => {
+          log.group("ENCRYPTED EVENT - DRM FLOW INITIATED");
+          log.warning("Encrypted content detected!");
+
+          log.info("Event details", {
+            initDataType: event.initDataType,
+            initDataSize: event.initData?.byteLength,
+          });
+
+          if (event.initData) {
+            log.info(
+              "Init data (first 64 bytes):",
+              log.hex(event.initData, 64)
+            );
+          }
+
+          try {
+            // Ensure certificate is loaded
+            if (!certificate) {
+              log.info("Certificate not cached, fetching...");
+              certificate = await fetchCertificate();
+            } else {
+              log.success("Using cached certificate", {
+                sizeBytes: certificate.byteLength,
+              });
+            }
+
+            // Extract content ID
+            currentContentId = extractContentId(event.initData);
+
+            // Request MediaKeySystemAccess
+            log.group("MEDIA KEY SYSTEM ACCESS");
+            log.info('Requesting access to "com.apple.fps"...');
+
+            const keySystemConfig = {
+              initDataTypes: ["skd"],
+              videoCapabilities: [
+                {
+                  contentType: "application/vnd.apple.mpegurl",
+                },
+              ],
+            };
+
+            log.info("Key system configuration", keySystemConfig);
+
+            const keySystemAccess = await navigator.requestMediaKeySystemAccess(
+              "com.apple.fps",
+              [keySystemConfig]
+            );
+
+            log.success("MediaKeySystemAccess granted", {
+              keySystem: keySystemAccess.keySystem,
+              configuration: keySystemAccess.getConfiguration(),
+            });
+
+            // Create MediaKeys
+            log.info("Creating MediaKeys object...");
+            const mediaKeys = await keySystemAccess.createMediaKeys();
+            log.success("MediaKeys created");
+
+            // Set server certificate
+            log.info("Setting server certificate...");
+            const certResult = await mediaKeys.setServerCertificate(
+              certificate
+            );
+            log.success("Server certificate set", { result: certResult });
+
+            // Attach to video
+            log.info("Attaching MediaKeys to video element...");
+            await video.setMediaKeys(mediaKeys);
+            log.success("MediaKeys attached to video");
+
+            log.groupEnd(); // MEDIA KEY SYSTEM ACCESS
+
+            // Create session
+            log.group("MEDIA KEY SESSION");
+            log.info("Creating MediaKeySession...");
+            const session = mediaKeys.createSession();
+            log.success("Session created", {
+              sessionId: session.sessionId || "not assigned yet",
+            });
+
+            // MESSAGE event handler
+            session.addEventListener("message", async (messageEvent) => {
+              log.group("MESSAGE EVENT - LICENSE REQUEST");
+              log.warning("SPC generated, need to request license");
+
+              log.info("Message details", {
+                messageType: messageEvent.messageType,
+                messageSizeBytes: messageEvent.message.byteLength,
+              });
+              log.info(
+                "SPC (first 32 bytes):",
+                log.hex(messageEvent.message, 32)
               );
 
-              // Get license
-              const license = await getLicense(licenseRequest, currentContentId);
+              try {
+                // Format license request
+                const licenseRequest = formatLicenseRequest(
+                  messageEvent.message,
+                  currentContentId,
+                  certificate
+                );
 
-              // Update session
-              log.info('Updating session with CKC...');
-              await session.update(license);
-              log.success('Session updated - decryption keys are now active!');
-              log.success('Content can now be decrypted and played');
+                // Get license
+                const license = await getLicense(
+                  licenseRequest,
+                  currentContentId
+                );
 
-            } catch (error) {
-              log.error('License update failed', {
-                message: error.message,
-                stack: error.stack
-              });
-            }
-
-            log.groupEnd(); // MESSAGE EVENT
-          });
-
-          // KEY STATUS CHANGE event handler
-          session.addEventListener('keystatuseschange', () => {
-            log.group('KEY STATUS CHANGE');
-            log.warning('DRM key status updated');
-
-            log.info('Total keys in session:', session.keyStatuses.size);
-
-            const keyStatuses = [];
-            session.keyStatuses.forEach((status, keyId) => {
-              const keyIdArray = keyId instanceof ArrayBuffer
-                ? new Uint8Array(keyId)
-                : new Uint8Array(keyId.buffer, keyId.byteOffset, keyId.byteLength);
-              const keyIdHex = Array.from(keyIdArray).map(b => b.toString(16).padStart(2, '0')).join('');
-
-              keyStatuses.push({
-                keyId: keyIdHex.substring(0, 32) + (keyIdHex.length > 32 ? '...' : ''),
-                status: status
-              });
-
-              if (status === 'usable') {
-                log.success(`Key ${keyIdHex.substring(0, 16)}...: ${status.toUpperCase()}`);
-              } else if (status === 'expired' || status === 'internal-error') {
-                log.error(`Key ${keyIdHex.substring(0, 16)}...: ${status.toUpperCase()}`);
-              } else {
-                log.warning(`Key ${keyIdHex.substring(0, 16)}...: ${status.toUpperCase()}`);
+                // Update session
+                log.info("Updating session with CKC...");
+                await session.update(license);
+                log.success(
+                  "Session updated - decryption keys are now active!"
+                );
+                log.success("Content can now be decrypted and played");
+              } catch (error) {
+                log.error("License update failed", {
+                  message: error.message,
+                  stack: error.stack,
+                });
               }
+
+              log.groupEnd(); // MESSAGE EVENT
             });
 
-            log.table(keyStatuses);
+            // KEY STATUS CHANGE event handler
+            session.addEventListener("keystatuseschange", () => {
+              log.group("KEY STATUS CHANGE");
+              log.warning("DRM key status updated");
 
-            const usableKeys = keyStatuses.filter(k => k.status === 'usable').length;
-            if (usableKeys > 0) {
-              log.success(`${usableKeys} key(s) are USABLE - content can be decrypted`);
-            } else {
-              log.warning('No usable keys - content cannot be decrypted yet');
-            }
+              log.info("Total keys in session:", session.keyStatuses.size);
 
-            log.groupEnd(); // KEY STATUS CHANGE
-          });
+              const keyStatuses = [];
+              session.keyStatuses.forEach((status, keyId) => {
+                const keyIdArray =
+                  keyId instanceof ArrayBuffer
+                    ? new Uint8Array(keyId)
+                    : new Uint8Array(
+                        keyId.buffer,
+                        keyId.byteOffset,
+                        keyId.byteLength
+                      );
+                const keyIdHex = Array.from(keyIdArray)
+                  .map((b) => b.toString(16).padStart(2, "0"))
+                  .join("");
 
-          // Generate license request
-          log.info('Generating license request...');
-          log.info('Init data type:', event.initDataType);
-          log.info('Init data size:', event.initData.byteLength);
+                keyStatuses.push({
+                  keyId:
+                    keyIdHex.substring(0, 32) +
+                    (keyIdHex.length > 32 ? "..." : ""),
+                  status: status,
+                });
 
-          await session.generateRequest(event.initDataType, event.initData);
-          log.success('License request generated - waiting for MESSAGE event...');
+                if (status === "usable") {
+                  log.success(
+                    `Key ${keyIdHex.substring(
+                      0,
+                      16
+                    )}...: ${status.toUpperCase()}`
+                  );
+                } else if (
+                  status === "expired" ||
+                  status === "internal-error"
+                ) {
+                  log.error(
+                    `Key ${keyIdHex.substring(
+                      0,
+                      16
+                    )}...: ${status.toUpperCase()}`
+                  );
+                } else {
+                  log.warning(
+                    `Key ${keyIdHex.substring(
+                      0,
+                      16
+                    )}...: ${status.toUpperCase()}`
+                  );
+                }
+              });
 
-          log.groupEnd(); // MEDIA KEY SESSION
+              log.table(keyStatuses);
 
-        } catch (error) {
-          log.error('DRM setup failed', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-          });
-        }
+              const usableKeys = keyStatuses.filter(
+                (k) => k.status === "usable"
+              ).length;
+              if (usableKeys > 0) {
+                log.success(
+                  `${usableKeys} key(s) are USABLE - content can be decrypted`
+                );
+              } else {
+                log.warning("No usable keys - content cannot be decrypted yet");
+              }
 
-        log.groupEnd(); // ENCRYPTED EVENT
-      });
+              log.groupEnd(); // KEY STATUS CHANGE
+            });
 
-      log.success('Encrypted event listener attached');
-      log.groupEnd(); // FAIRPLAY DRM SETUP
-    }
+            // Generate license request
+            log.info("Generating license request...");
+            log.info("Init data type:", event.initDataType);
+            log.info("Init data size:", event.initData.byteLength);
 
-    // ============================================================
-    // LOAD VIDEO
-    // ============================================================
-    async function loadVideo() {
-      const manifestUrl = manifestUrlInput.value.trim();
+            await session.generateRequest(event.initDataType, event.initData);
+            log.success(
+              "License request generated - waiting for MESSAGE event..."
+            );
 
-      if (!manifestUrl) {
-        log.error('No manifest URL provided');
-        alert('Please enter a manifest URL');
-        return;
-      }
+            log.groupEnd(); // MEDIA KEY SESSION
+          } catch (error) {
+            log.error("DRM setup failed", {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+            });
+          }
 
-      log.group('VIDEO LOAD');
-      log.warning('Starting video load...');
-
-      log.info('Configuration', {
-        manifestUrl: manifestUrl,
-        licenseUrl: CONFIG.licenseUrl,
-        certificateUrl: CONFIG.certificateUrl,
-        userAgent: navigator.userAgent
-      });
-
-      try {
-        // Reset video element
-        log.info('Resetting video element...');
-        video.pause();
-        video.removeAttribute('src');
-        video.load();
-
-        // Clear existing MediaKeys
-        if (video.mediaKeys) {
-          log.info('Clearing existing MediaKeys...');
-          await video.setMediaKeys(null);
-        }
-
-        // Reset certificate cache to ensure fresh DRM flow
-        certificate = null;
-        currentContentId = null;
-        log.info('DRM state reset');
-
-        // Pre-fetch certificate
-        log.info('Pre-fetching certificate...');
-        certificate = await fetchCertificate();
-
-        // Set video source
-        log.info('Setting video source...');
-        video.src = manifestUrl;
-        log.success('Video source set - waiting for encrypted event...');
-
-      } catch (error) {
-        log.error('Video load failed', {
-          message: error.message,
-          stack: error.stack
+          log.groupEnd(); // ENCRYPTED EVENT
         });
+
+        log.success("Encrypted event listener attached");
+        log.groupEnd(); // FAIRPLAY DRM SETUP
       }
 
-      log.groupEnd(); // VIDEO LOAD
-    }
+      async function loadVideo() {
+        const manifestUrl = manifestUrlInput.value.trim();
 
-    // ============================================================
-    // INITIALIZATION
-    // ============================================================
-    function init() {
-      log.group('INITIALIZATION');
-      log.success('FairPlay HLS Test Page loaded');
-
-      log.info('Browser info', {
-        userAgent: navigator.userAgent,
-        platform: navigator.platform,
-        vendor: navigator.vendor
-      });
-
-      log.info('Configuration', {
-        defaultHlsUrl: CONFIG.defaultHlsUrl.substring(0, 80) + '...',
-        licenseUrl: CONFIG.licenseUrl,
-        certificateUrl: CONFIG.certificateUrl
-      });
-
-      // Check FairPlay support
-      const hasFairPlaySupport = !!(window.WebKitMediaKeys || navigator.requestMediaKeySystemAccess);
-      if (hasFairPlaySupport) {
-        log.success('FairPlay DRM support: YES');
-      } else {
-        log.error('FairPlay DRM support: NO - This page requires Safari browser');
-      }
-
-      setupVideoEvents();
-      setupFairPlayDRM();
-
-      // Attach load button handler
-      loadBtn.addEventListener('click', loadVideo);
-      log.info('Load button handler attached');
-
-      // Allow Enter key in input to trigger load
-      manifestUrlInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          loadVideo();
+        if (!manifestUrl) {
+          log.error("No manifest URL provided");
+          alert("Please enter a manifest URL");
+          return;
         }
-      });
-      log.info('Enter key handler attached');
 
-      log.success('Initialization complete');
-      log.info('Click "Load" button or press Enter to start playback');
-      log.groupEnd(); // INITIALIZATION
-    }
+        log.group("VIDEO LOAD");
+        log.warning("Starting video load...");
 
-    // Start
-    init();
-  </script>
-</body>
+        log.info("Configuration", {
+          manifestUrl: manifestUrl,
+          licenseUrl: CONFIG.licenseUrl,
+          certificateUrl: CONFIG.certificateUrl,
+          userAgent: navigator.userAgent,
+        });
+
+        try {
+          // Reset video element
+          log.info("Resetting video element...");
+          video.pause();
+          video.removeAttribute("src");
+          video.load();
+
+          // Clear existing MediaKeys
+          if (video.mediaKeys) {
+            log.info("Clearing existing MediaKeys...");
+            await video.setMediaKeys(null);
+          }
+
+          // Reset certificate cache to ensure fresh DRM flow
+          certificate = null;
+          currentContentId = null;
+          log.info("DRM state reset");
+
+          // Pre-fetch certificate
+          log.info("Pre-fetching certificate...");
+          certificate = await fetchCertificate();
+
+          // Set video source
+          log.info("Setting video source...");
+          video.src = manifestUrl;
+          log.success("Video source set - waiting for encrypted event...");
+        } catch (error) {
+          log.error("Video load failed", {
+            message: error.message,
+            stack: error.stack,
+          });
+        }
+
+        log.groupEnd(); // VIDEO LOAD
+      }
+
+      // ============================================================
+      // INITIALIZATION
+      // ============================================================
+      function init() {
+        log.group("INITIALIZATION");
+        log.success("FairPlay HLS Test Page loaded");
+
+        log.info("Browser info", {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          vendor: navigator.vendor,
+        });
+
+        log.info("Configuration", {
+          defaultHlsUrl: CONFIG.defaultHlsUrl.substring(0, 80) + "...",
+          licenseUrl: CONFIG.licenseUrl,
+          certificateUrl: CONFIG.certificateUrl,
+        });
+
+        // Check FairPlay support
+        const hasFairPlaySupport = !!(
+          window.WebKitMediaKeys || navigator.requestMediaKeySystemAccess
+        );
+        if (hasFairPlaySupport) {
+          log.success("FairPlay DRM support: YES");
+        } else {
+          log.error(
+            "FairPlay DRM support: NO - This page requires Safari browser"
+          );
+        }
+
+        setupVideoEvents();
+        setupFairPlayDRM();
+
+        // Attach load button handler
+        loadBtn.addEventListener("click", loadVideo);
+        log.info("Load button handler attached");
+
+        // Allow Enter key in input to trigger load
+        manifestUrlInput.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            loadVideo();
+          }
+        });
+        log.info("Enter key handler attached");
+
+        log.success("Initialization complete");
+        log.info('Click "Load" button or press Enter to start playback');
+        log.groupEnd(); // INITIALIZATION
+      }
+
+      init();
+    </script>
+  </body>
 </html>
