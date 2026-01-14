@@ -220,6 +220,8 @@
       let certificate = null;
       let currentContentId = null;
       let encryptedEventCount = 0;
+      let lastCurrentTime = 0;
+      let isSeeking = false;
 
       const video = document.getElementById("video");
       const manifestUrlInput = document.getElementById("manifestUrl");
@@ -481,6 +483,29 @@
                     }
                   : null,
             };
+
+            // Track seeking state
+            if (eventName === "seeking") {
+              isSeeking = true;
+            } else if (eventName === "seeked") {
+              isSeeking = false;
+              lastCurrentTime = video.currentTime;
+            }
+
+            // Detect currentTime going backward (shouldn't happen during normal playback)
+            if (eventName === "timeupdate" && !isSeeking && !video.paused) {
+              if (video.currentTime < lastCurrentTime && lastCurrentTime > 0) {
+                const timeDiff = lastCurrentTime - video.currentTime;
+                log.error(`⚠️ PLAYBACK ANOMALY: currentTime went BACKWARD!`, {
+                  previousTime: lastCurrentTime.toFixed(3),
+                  currentTime: video.currentTime.toFixed(3),
+                  jumpBackward: timeDiff.toFixed(3) + "s",
+                  isSeeking,
+                  paused: video.paused,
+                });
+              }
+              lastCurrentTime = video.currentTime;
+            }
 
             if (eventName === "error") {
               log.error(`Video event: ${eventName}`, {
@@ -997,8 +1022,10 @@
           certificate = null;
           currentContentId = null;
           encryptedEventCount = 0;
+          lastCurrentTime = 0;
+          isSeeking = false;
           log.info(
-            "DRM state reset (certificate, contentId, encrypted event counter)"
+            "DRM state reset (certificate, contentId, encrypted event counter, time tracking)"
           );
 
           // Pre-fetch certificate
