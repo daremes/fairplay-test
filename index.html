@@ -467,10 +467,19 @@
 
         events.forEach((eventName) => {
           video.addEventListener(eventName, (e) => {
+            // Calculate buffer ahead of current playback position
+            const bufferEnd = video.buffered?.length > 0
+              ? video.buffered.end(video.buffered.length - 1)
+              : null;
+            const bufferAhead = bufferEnd !== null
+              ? (bufferEnd - video.currentTime).toFixed(3)
+              : null;
+
             const eventData = {
               type: eventName,
               currentTime: video.currentTime,
               duration: video.duration?.toFixed(2),
+              bufferAhead: bufferAhead ? `${bufferAhead}s` : null,
               readyState: video.readyState,
               networkState: video.networkState,
               paused: video.paused,
