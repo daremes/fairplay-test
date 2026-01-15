@@ -44,6 +44,20 @@
         cursor: pointer;
       }
 
+      .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: #ccc;
+        font-size: 14px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .checkbox-label input {
+        cursor: pointer;
+      }
+
       .log-toggle {
         margin-top: 16px;
         padding: 6px 12px;
@@ -105,6 +119,10 @@
           placeholder="Enter HLS manifest URL..."
         />
         <button id="loadBtn" class="load-btn">Load</button>
+        <label class="checkbox-label">
+          <input type="checkbox" id="delayedPlayback" />
+          Delayed playback
+        </label>
       </div>
       <button id="logToggle" class="log-toggle">Show Logs</button>
       <div id="logWindow" class="log-window"></div>
@@ -226,6 +244,7 @@
       const video = document.getElementById("video");
       const manifestUrlInput = document.getElementById("manifestUrl");
       const loadBtn = document.getElementById("loadBtn");
+      const delayedPlaybackCheckbox = document.getElementById("delayedPlayback");
 
       manifestUrlInput.value = CONFIG.defaultHlsUrl;
 
@@ -1045,6 +1064,43 @@
           log.info("Setting video source...");
           video.src = manifestUrl;
           log.success("Video source set - waiting for encrypted event...");
+
+          // Handle delayed playback if checkbox is checked
+          if (delayedPlaybackCheckbox.checked) {
+            log.info("Delayed playback enabled - will wait 10s, seek -10s, then play");
+
+            // Disable autoplay by removing the attribute and pausing
+            video.removeAttribute("autoplay");
+            video.pause();
+
+            // Wait for video to be ready to play
+            const onCanPlay = () => {
+              video.removeEventListener("canplay", onCanPlay);
+              video.pause(); // Ensure paused in case autoplay triggered
+              log.info("Video ready - starting 10 second delay...");
+
+              setTimeout(() => {
+                const currentTime = video.currentTime;
+                const seekTarget = Math.max(0, currentTime - 10);
+                log.info(`Delay complete - seeking from ${currentTime.toFixed(2)}s to ${seekTarget.toFixed(2)}s`);
+                video.currentTime = seekTarget;
+
+                // Play after seek completes
+                const onSeeked = () => {
+                  video.removeEventListener("seeked", onSeeked);
+                  log.info("Seek complete - starting playback");
+                  video.play().catch(err => {
+                    log.error("Playback failed", { message: err.message });
+                  });
+                };
+                video.addEventListener("seeked", onSeeked);
+              }, 10000);
+            };
+            video.addEventListener("canplay", onCanPlay);
+          } else {
+            // Restore autoplay attribute for normal playback
+            video.setAttribute("autoplay", "");
+          }
         } catch (error) {
           log.error("Video load failed", {
             message: error.message,
